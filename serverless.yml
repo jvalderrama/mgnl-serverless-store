@@ -1,0 +1,87 @@
+service: mgnl-serverless-store
+
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: nodejs10.x
+  lambdaHashingVersion: 20201221
+
+  stage: dev
+  region: eu-central-1
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage} #mgnl-serverless-store-dev/pre/pro
+  #Block for 'sls deploy' to AWS in order to give permissions to interact with DynamoDB
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+  #Close block
+
+functions:
+  hellostore:
+    handler: handler.hellostore
+    events:
+      - httpApi:
+          path: /hellostore
+          method: get
+          cors: true
+  create:
+    handler: store-api/create.create
+    events:
+      - http:
+          path: items
+          method: post
+          cors: true
+  list:
+    handler: store-api/list.list
+    events:
+      - http:
+          path: items
+          method: get
+          cors: true
+  checkout:
+    handler: store-api/checkout.checkout
+    events:
+      - http:
+          path: items/{id}/checkout
+          method: get
+          cors: true
+plugins:
+  - serverless-finch
+  - serverless-dynamodb-local
+  - serverless-offline
+
+#DynamoDB localhost, bd no in memory, use path
+custom:
+  dynamodb:
+    start:
+      port: 8000
+      inMemory: false
+      migrate: false
+      dbPath: .
+    stages:
+      - dev
+#DynamoDB table creation in local and remote
+resources:
+  Resources:
+    ItemsDynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.DYNAMODB_TABLE} #Name dynamically according with the environment
