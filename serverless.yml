@@ -68,6 +68,10 @@ custom:
       dbPath: .
     stages:
       - dev
+  # Uncomment the three next line for Web client (client folder)
+  #client:
+  #  bucketName: client-serverless-store-${opt:stage, self:provider.stage}
+  #  distributionFolder: client/${opt:stage, self:provider.stage}
 #DynamoDB table creation in local and remote
 resources:
   Resources:
